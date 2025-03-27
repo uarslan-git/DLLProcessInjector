@@ -8,17 +8,17 @@ DWORD GetProcessId(const char* procName) {
     HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
     if (hSnap != INVALID_HANDLE_VALUE) {
-        PROCESSENTRY32 pe32;
-        pe32.dwSize = sizeof(pe32);
+        PROCESSENTRY32 procEntry;
+        procEntry.dwSize = sizeof(procEntry);
 
-        if (Process32First(hSnap, &pe32))
+        if (Process32First(hSnap, &procEntry))
         {
             do {
-                if (!strcmp((char*)pe32.szExeFile, procName)) {
-                    procId = pe32.th32ProcessID;
+                if (!_stricmp(procEntry.szExeFile, procName)) {
+                    procId = procEntry.th32ProcessID;
                     break;
                 }
-            } while (Process32Next(hSnap, &pe32));
+            } while (Process32Next(hSnap, &procEntry));
         }
     }
     CloseHandle(hSnap);
@@ -27,7 +27,7 @@ DWORD GetProcessId(const char* procName) {
 
 int main()
 {
-    const char* dllPath = "./dll.dll";
+    const char* dllPath = "C:\\Users\\umut\\Desktop\\dll.dll";
     const char* procName = "ac_client.exe";
     DWORD procId = 0;
 
@@ -36,21 +36,26 @@ int main()
         Sleep(30);
     }
 
+
     HANDLE hProc = OpenProcess(PROCESS_ALL_ACCESS, 0, procId);
 
     if (hProc && hProc != INVALID_HANDLE_VALUE) {
-        void* loc = VirtualAllocEx(hProc, 0, sizeof(dllPath), (MEM_COMMIT | MEM_RESERVE), PAGE_READWRITE);
+        void* loc = VirtualAllocEx(hProc, 0, MAX_PATH, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
-        WriteProcessMemory(hProc, loc, dllPath, sizeof(dllPath) + 1, 0);
+
+        if (loc) WriteProcessMemory(hProc, loc, dllPath, strlen(dllPath) + 1, 0);
 
         HANDLE hThread = CreateRemoteThread(hProc, 0, 0, (LPTHREAD_START_ROUTINE)LoadLibraryA, loc, 0, 0);
+        std::cout << procId << std::endl;
+
 
         if (hThread) {
             CloseHandle(hThread);
         }
+    }
 
         if (hProc) {
             CloseHandle(hProc);
         }
-    }
+        return 0;
 }
